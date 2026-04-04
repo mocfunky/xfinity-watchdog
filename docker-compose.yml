@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  xfinity-watchdog:
+    build: .
+    container_name: xfinity-watchdog
+    restart: unless-stopped
+    network_mode: host
+
+    environment:
+      TZ: America/New_York
+      RUN_MINUTE: "30"
+      UPLOAD_THRESHOLD_MBPS: "100"
+      MAX_ATTEMPTS: "3"
+      RETRY_WAIT_SECONDS: "30"
+      DISCORD_WEBHOOK_URL: ""
+
+      ENABLE_REBOOT: "true"
+      MODEM_URL: "http://10.0.0.1"
+      MODEM_USERNAME: "admin"
+      MODEM_PASSWORD: "CHANGE_ME"
+
+    volumes:
+      - .:/app
+      - ./logs:/logs
+
+    working_dir: /app
+    command: python /app/xfinity.py
