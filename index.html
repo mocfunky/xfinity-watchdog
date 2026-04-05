@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xfinity Watchdog</title>
+<style>
+  :root {
+    --bg: #080c10;
+    --surface: #0d1117;
+    --card: #111820;
+    --card-hover: #151e28;
+    --border: #1e2d3d;
+    --border-bright: #2a3f55;
+    --green: #00ff87;
+    --green-dim: #00c96a;
+    --green-glow: rgba(0,255,135,0.15);
+    --green-faint: rgba(0,255,135,0.06);
+    --amber: #ffb347;
+    --red: #ff4757;
+    --red-glow: rgba(255,71,87,0.15);
+    --blue: #38bdf8;
+    --text: #e2eaf4;
+    --text-dim: #7a92a8;
+    --text-faint: #3d5068;
+    --mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
+    --sans: ui-rounded, -apple-system, 'SF Pro Display', 'Segoe UI Variable', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(30,45,61,0.3) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30,45,61,0.3) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .logo { display: flex; align-items: center; gap: 14px; }
+
+  .logo-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--green-faint);
+    border: 1px solid var(--green);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 20px var(--green-glow);
+  }
+
+  h1 {
+    font-family: var(--sans);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  h1 span { color: var(--green); }
+
+  .subtitle {
+    font-size: 11px;
+    color: var(--text-faint);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  .live-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--green-faint);
+    border: 1px solid rgba(0,255,135,0.3);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 6px var(--green);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  /* ── Status hero ── */
+  .status-hero {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px 36px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .status-hero.good  { border-color: rgba(0,255,135,0.4); }
+  .status-hero.warn  { border-color: rgba(255,179,71,0.4); }
+  .status-hero.bad   { border-color: rgba(255,71,87,0.4); }
+
+  .status-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+  }
+  .status-hero.good::before { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+  .status-hero.warn::before { background: linear-gradient(90deg, transparent, var(--amber), transparent); }
+  .status-hero.bad::before  { background: linear-gradient(90deg, transparent, var(--red), transparent); }
+
+  .status-inner {
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+  }
+
+  .status-icon-wrap {
+    width: 68px; height: 68px;
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .status-icon-wrap.good { background: var(--green-faint); border: 1px solid rgba(0,255,135,0.3); }
+  .status-icon-wrap.warn { background: rgba(255,179,71,0.08); border: 1px solid rgba(255,179,71,0.3); }
+  .status-icon-wrap.bad  { background: var(--red-glow); border: 1px solid rgba(255,71,87,0.3); }
+
+  .status-text h2 {
+    font-family: var(--sans);
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 5px;
+  }
+  .status-text h2.good { color: var(--green); }
+  .status-text h2.warn { color: var(--amber); }
+  .status-text h2.bad  { color: var(--red); }
+
+  .status-text p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+  .status-meta {
+    margin-left: auto;
+    text-align: right;
+    font-size: 11px;
+    color: var(--text-faint);
+    line-height: 2.2;
+  }
+  .status-meta strong { color: var(--text-dim); font-weight: 500; }
+
+  /* ── Streak banner ── */
+  .streak-banner {
+    background: rgba(255,71,87,0.08);
+    border: 1px solid rgba(255,71,87,0.3);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--red);
+  }
+  .streak-banner.visible { display: flex; }
+
+  /* ── Stat grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .stat-card:hover { border-color: var(--border-bright); background: var(--card-hover); }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-family: var(--sans);
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .stat-value.green { color: var(--green); }
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.red   { color: var(--red); }
+
+  .stat-sub { font-size: 11px; color: var(--text-faint); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .card-tag {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+  }
+
+  /* ── Speed chart ── */
+  .threshold-label {
+    font-size: 10px;
+    color: var(--amber);
+    text-align: right;
+    margin-bottom: 4px;
+    opacity: 0.8;
+    letter-spacing: 0.5px;
+  }
+
+  .threshold-line {
+    width: 100%;
+    height: 1px;
+    background: repeating-linear-gradient(90deg, var(--amber) 0, var(--amber) 4px, transparent 4px, transparent 8px);
+    margin-bottom: 6px;
+    opacity: 0.5;
+  }
+
+  .chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 7px;
+    height: 90px;
+    margin-bottom: 10px;
+  }
+
+  .bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .bar {
+    width: 100%;
+    border-radius: 3px 3px 0 0;
+    min-height: 3px;
+  }
+  .bar.good { background: var(--green); }
+  .bar.warn { background: var(--amber); }
+  .bar.bad  { background: var(--red); }
+
+  .bar-time { font-size: 9px; color: var(--text-faint); }
+
+  .chart-legend {
+    display: flex; gap: 18px;
+    font-size: 10px; color: var(--text-faint);
+  }
+  .legend-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  /* ── Bottom grid ── */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  /* ── Reboot list ── */
+  .reboot-list, .check-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .reboot-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-size: 12px;
+  }
+
+  .reboot-num {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    background: var(--red-glow);
+    border: 1px solid rgba(255,71,87,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: var(--red); font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .reboot-time { color: var(--text-dim); flex: 1; }
+  .reboot-speeds { font-size: 10px; color: var(--text-faint); text-align: right; }
+  .reboot-speeds span { color: var(--red); }
+
+  /* ── Check list ── */
+  .check-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-size: 12px;
+  }
+
+  .check-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .check-dot.good { background: var(--green); box-shadow: 0 0 5px var(--green); }
+  .check-dot.bad  { background: var(--red); }
+  .check-dot.warn { background: var(--amber); }
+
+  .check-time   { color: var(--text-faint); font-size: 10px; width: 130px; flex-shrink: 0; }
+  .check-result { color: var(--text-dim); flex: 1; }
+  .check-speed  { color: var(--text); font-weight: 500; }
+
+  .empty-state {
+    text-align: center; color: var(--text-faint);
+    font-size: 12px; padding: 28px; letter-spacing: 1px;
+  }
+
+  footer {
+    text-align: center;
+    font-size: 10px; color: var(--text-faint);
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 700px) {
+    .grid        { grid-template-columns: 1fr; }
+    .bottom-grid { grid-template-columns: 1fr; }
+    .status-meta { margin-left: 0; text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00ff87" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Xfinity <span>Watchdog</span></h1>
+        <div class="subtitle">Upload Speed Monitor</div>
+      </div>
+    </div>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      Auto-refresh 60s
+    </div>
+  </header>
+
+  <!-- Streak warning -->
+  <div class="streak-banner" id="streakBanner">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span id="streakMsg"></span>
+  </div>
+
+  <!-- Status hero -->
+  <div class="status-hero good" id="statusHero">
+    <div class="status-inner">
+      <div class="status-icon-wrap good" id="statusIconWrap">
+        <svg id="statusIcon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00ff87" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div class="status-text">
+        <h2 class="good" id="statusTitle">All Good</h2>
+        <p id="statusDesc">Upload speeds are within normal range. No action required.</p>
+      </div>
+      <div class="status-meta">
+        <div>Last check <strong id="lastCheckTime">—</strong></div>
+        <div>Next check <strong id="nextCheckTime">—</strong></div>
+        <div>Threshold <strong id="thresholdDisplay">—</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="grid">
+    <div class="stat-card">
+      <div class="stat-label">Last Upload Speed</div>
+      <div class="stat-value green" id="lastSpeed">—</div>
+      <div class="stat-sub" id="lastSpeedSub">Mbps</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Reboots</div>
+      <div class="stat-value amber" id="totalReboots">0</div>
+      <div class="stat-sub">All time</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Consecutive Reboots</div>
+      <div class="stat-value green" id="rebootStreak">0</div>
+      <div class="stat-sub" id="streakSub">Current streak</div>
+    </div>
+  </div>
+
+  <!-- Speed chart -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Recent Upload Speeds</div>
+      <div class="card-tag">Last 12 checks</div>
+    </div>
+    <div class="threshold-label" id="thresholdLabel">Threshold: —</div>
+    <div class="threshold-line"></div>
+    <div class="chart" id="speedChart">
+      <div class="empty-state" style="width:100%">No speed data yet</div>
+    </div>
+    <div class="chart-legend">
+      <span><span class="legend-dot" style="background:var(--green)"></span>Good</span>
+      <span><span class="legend-dot" style="background:var(--amber)"></span>Borderline</span>
+      <span><span class="legend-dot" style="background:var(--red)"></span>Low — triggered reboot</span>
+    </div>
+  </div>
+
+  <!-- Bottom two-col -->
+  <div class="bottom-grid">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header">
+        <div class="card-title">Recent Reboots</div>
+        <div class="card-tag" id="rebootCount">0 total</div>
+      </div>
+      <div class="reboot-list" id="rebootList">
+        <div class="empty-state">No reboots yet 🎉</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header">
+        <div class="card-title">Check Log</div>
+        <div class="card-tag">Scheduled :15 &amp; :45</div>
+      </div>
+      <div class="check-list" id="checkList">
+        <div class="empty-state">No checks recorded yet</div>
+      </div>
+    </div>
+  </div>
+
+  <br>
+  <footer>Xfinity Watchdog &nbsp;·&nbsp; Checks at :15 and :45 &nbsp;·&nbsp; Auto-refresh every 60s</footer>
+
+</div>
+
+<script>
+async function loadData() {
+  try {
+    const res = await fetch('/api/status');
+    const d   = await res.json();
+    render(d);
+  } catch(e) {
+    console.error('Failed to fetch status', e);
+  }
+}
+
+function render(d) {
+  const threshold = d.threshold_mbps;
+  const streak    = d.reboot_streak || 0;
+
+  // ── Hero state ──
+  const hero     = document.getElementById('statusHero');
+  const iconWrap = document.getElementById('statusIconWrap');
+  const icon     = document.getElementById('statusIcon');
+  const title    = document.getElementById('statusTitle');
+  const desc     = document.getElementById('statusDesc');
+
+  let heroState = 'good';
+  if (streak >= 3) heroState = 'bad';
+  else if (streak >= 1) heroState = 'warn';
+  else if (d.last_speed !== null && d.last_speed < threshold) heroState = 'bad';
+
+  hero.className     = `status-hero ${heroState}`;
+  iconWrap.className = `status-icon-wrap ${heroState}`;
+
+  const icons = {
+    good: { path: '<polyline points="20 6 9 17 4 12"/>', color: '#00ff87' },
+    warn: { path: '<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>', color: '#ffb347' },
+    bad:  { path: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>', color: '#ff4757' },
+  };
+  icon.innerHTML = icons[heroState].path;
+  icon.setAttribute('stroke', icons[heroState].color);
+
+  const heroText = {
+    good: ['All Good',       'Upload speeds are within normal range. No action required.'],
+    warn: ['Degraded',       `Upload dropped and a reboot was triggered. Monitoring recovery.`],
+    bad:  ['Not Recovering', `Rebooted ${streak} times in a row — upload still below threshold. Manual check needed.`],
+  };
+  title.textContent   = heroText[heroState][0];
+  title.className     = heroState;
+  desc.textContent    = heroText[heroState][1];
+
+  document.getElementById('lastCheckTime').textContent  = d.last_check_time || '—';
+  document.getElementById('nextCheckTime').textContent  = d.next_check_time || '—';
+  document.getElementById('thresholdDisplay').textContent = threshold ? `${threshold} Mbps` : '—';
+  document.getElementById('thresholdLabel').textContent   = `Threshold: ${threshold} Mbps`;
+
+  // ── Stat cards ──
+  const lastSpeedEl = document.getElementById('lastSpeed');
+  if (d.last_speed !== null) {
+    lastSpeedEl.textContent = d.last_speed;
+    lastSpeedEl.className   = 'stat-value ' + (d.last_speed >= threshold ? 'green' : 'red');
+    document.getElementById('lastSpeedSub').textContent = d.last_speed >= threshold ? 'Mbps — within range' : 'Mbps — below threshold';
+  } else {
+    lastSpeedEl.textContent = '—';
+    lastSpeedEl.className   = 'stat-value green';
+  }
+
+  document.getElementById('totalReboots').textContent = d.total_reboots || 0;
+
+  const streakEl = document.getElementById('rebootStreak');
+  streakEl.textContent = streak;
+  streakEl.className   = 'stat-value ' + (streak === 0 ? 'green' : streak >= 3 ? 'red' : 'amber');
+  document.getElementById('streakSub').textContent = streak === 0 ? 'No issues' : streak >= 3 ? 'Needs attention' : 'Monitoring';
+
+  // ── Streak banner ──
+  const banner = document.getElementById('streakBanner');
+  if (streak >= 3) {
+    banner.classList.add('visible');
+    document.getElementById('streakMsg').textContent =
+      `Modem has been rebooted ${streak} times in a row and upload is still not recovering. Check your modem or call Xfinity.`;
+  } else {
+    banner.classList.remove('visible');
+  }
+
+  // ── Speed chart ──
+  const chart  = document.getElementById('speedChart');
+  const speeds = d.recent_speeds || [];
+  if (speeds.length > 0) {
+    const maxSpeed = Math.max(...speeds.map(s => s.speed || 0), threshold * 1.2);
+    chart.innerHTML = speeds.slice(-12).map(s => {
+      if (s.speed === null) return '';
+      const pct = Math.min(100, Math.round((s.speed / maxSpeed) * 100));
+      const cls = s.speed >= threshold ? 'good' : s.speed >= threshold * 0.7 ? 'warn' : 'bad';
+      const t   = s.time ? s.time.slice(11, 16) : '';
+      return `<div class="bar-wrap">
+        <div class="bar ${cls}" style="height:${pct}%" title="${s.speed} Mbps at ${s.time}"></div>
+        <div class="bar-time">${t}</div>
+      </div>`;
+    }).join('');
+  } else {
+    chart.innerHTML = '<div class="empty-state" style="width:100%">No speed data yet</div>';
+  }
+
+  // ── Reboot list ──
+  const rebootList = document.getElementById('rebootList');
+  const reboots    = d.recent_reboots || [];
+  document.getElementById('rebootCount').textContent = `${d.total_reboots || 0} total`;
+  if (reboots.length > 0) {
+    rebootList.innerHTML = [...reboots].reverse().map((r, i) => `
+      <div class="reboot-item">
+        <div class="reboot-num">${i + 1}</div>
+        <div class="reboot-time">${r.time}</div>
+        <div class="reboot-speeds">Speeds: <span>${r.speeds_before}</span></div>
+      </div>`).join('');
+  } else {
+    rebootList.innerHTML = '<div class="empty-state">No reboots yet 🎉</div>';
+  }
+
+  // ── Check log ──
+  const checkList = document.getElementById('checkList');
+  const checks    = d.recent_checks || [];
+  if (checks.length > 0) {
+    checkList.innerHTML = [...checks].reverse().map(c => {
+      const cls   = c.result === 'good' ? 'good' : c.result === 'rebooted' ? 'bad' : 'warn';
+      const label = c.result === 'good' ? 'All good' : c.result === 'rebooted' ? 'Rebooted' : 'Reboot failed';
+      return `<div class="check-item">
+        <div class="check-dot ${cls}"></div>
+        <div class="check-time">${c.time}</div>
+        <div class="check-result">${label}</div>
+        <div class="check-speed">${c.speed !== null ? c.speed + ' Mbps' : '—'}</div>
+      </div>`;
+    }).join('');
+  } else {
+    checkList.innerHTML = '<div class="empty-state">No checks recorded yet</div>';
+  }
+}
+
+loadData();
+setInterval(loadData, 60000);
+</script>
+</body>
+</html>
