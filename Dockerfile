@@ -5,7 +5,7 @@ RUN apt-get update && \
     curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash && \
     apt-get update && \
     apt-get install -y speedtest && \
-    pip install --no-cache-dir requests playwright==1.52.0 && \
+    pip install --no-cache-dir requests flask playwright==1.52.0 && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

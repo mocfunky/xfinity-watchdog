@@ -323,6 +323,10 @@ app = Flask(__name__)
 def index():
     return send_from_directory(str(DASHBOARD_DIR), "index.html")
 
+@app.route("/favicon.svg")
+def favicon():
+    return send_from_directory(str(DASHBOARD_DIR), "favicon.svg")
+
 @app.route("/api/status")
 def api_status():
     wait_s, _ = seconds_until_next_run(RUN_MINUTES)
